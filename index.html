@@ -24,9 +24,98 @@ body {
   display: flex;
   flex-direction: column;
 }
-h2 {
-  margin-top: 0;
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 15px;
+}
+h2 {
+  margin: 0;
+}
+.add-btn {
+  padding: 8px 16px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.add-btn:hover {
+  background: #45a049;
+}
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+}
+.modal-content {
+  background-color: #fefefe;
+  margin: 10% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  border-radius: 10px;
+  width: 80%;
+  max-width: 600px;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.close {
+  color: #aaa;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.close:hover {
+  color: #000;
+}
+.json-input {
+  width: 100%;
+  min-height: 200px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 15px;
+}
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-primary {
+  background: #4CAF50;
+  color: white;
+}
+.btn-primary:hover {
+  background: #45a049;
+}
+.btn-secondary {
+  background: #f44336;
+  color: white;
+}
+.btn-secondary:hover {
+  background: #da190b;
 }
 .video-list { 
   list-style: none; 
@@ -39,8 +128,29 @@ h2 {
   background: #f5f5f5; 
   border-radius: 5px;
   cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-.video-item:hover { background: #e0e0e0; }
+.video-item:hover { 
+  background: #e0e0e0; 
+}
+.video-item-text {
+  flex: 1;
+}
+.delete-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: 10px;
+}
+.delete-btn:hover {
+  background: #da190b;
+}
 #player { 
   flex: 1;
   display: flex;
@@ -60,15 +170,12 @@ video {
 
 <div class="container">
   <div class="left-panel">
-    <h2>📚 내 강의 영상 모음</h2>
-    <ul class="video-list">
-      <li class="video-item" data-src="https://video.mathflat.com/problem/898385/595627f4abb53bdea11b40a0ef00a78b/video-1080p.m3u8">
-        📐 문제 898385 - 설명 영상
-      </li>
-      <li class="video-item" data-src="https://video.mathflat.com/problem/898855/0749ce58b99d69390561288c9934faee/video-1080p.m3u8">
-        📊 문제 XXXXXX - 설명 영상
-      </li>
-      <!-- 필요한 영상들 계속 추가 -->
+    <div class="header">
+      <h2>📚 내 강의 영상 모음</h2>
+      <button class="add-btn" id="addBtn">➕ 붙여넣기로 추가</button>
+    </div>
+    <ul class="video-list" id="videoList">
+      <!-- 동적으로 추가됨 -->
     </ul>
   </div>
   
@@ -79,34 +186,194 @@ video {
   </div>
 </div>
 
+<!-- 모달 -->
+<div id="addModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>영상 추가</h3>
+      <span class="close" id="closeModal">&times;</span>
+    </div>
+    <p>북마크릿으로 복사한 JSON을 붙여넣으세요:</p>
+    <textarea id="jsonInput" class="json-input" placeholder='[{"title":"문제 123","url":"https://..."}]'></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="cancelBtn">취소</button>
+      <button class="btn btn-primary" id="saveBtn">추가</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
-const video = document.getElementById('videoPlayer');
-const items = document.querySelectorAll('.video-item');
+// 초기 데이터 (하드코드된 리스트)
+const initialVideos = [
+  { title: '📐 문제 898385 - 설명 영상', url: 'https://video.mathflat.com/problem/898385/595627f4abb53bdea11b40a0ef00a78b/video-1080p.m3u8' },
+  { title: '📊 문제 XXXXXX - 설명 영상', url: 'https://video.mathflat.com/problem/898855/0749ce58b99d69390561288c9934faee/video-1080p.m3u8' }
+];
 
-items.forEach(item => {
-  item.addEventListener('click', function() {
-    const videoSrc = this.dataset.src;
+// localStorage 키
+const STORAGE_KEY = 'mathflat_videos';
+
+// 비디오 리스트 관리
+let videos = [];
+
+// localStorage에서 불러오기
+function loadVideos() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      videos = JSON.parse(saved);
+    } catch (e) {
+      console.error('저장된 데이터를 불러올 수 없습니다:', e);
+      videos = [...initialVideos];
+    }
+  } else {
+    videos = [...initialVideos];
+  }
+  renderVideos();
+}
+
+// localStorage에 저장
+function saveVideos() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(videos));
+}
+
+// 비디오 리스트 렌더링
+function renderVideos() {
+  const videoList = document.getElementById('videoList');
+  videoList.innerHTML = '';
+  
+  videos.forEach((video, index) => {
+    const li = document.createElement('li');
+    li.className = 'video-item';
+    li.setAttribute('data-src', video.url);
     
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(videoSrc);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play();
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = videoSrc;
-      video.addEventListener('loadedmetadata', () => {
-        video.play();
-      });
+    const textSpan = document.createElement('span');
+    textSpan.className = 'video-item-text';
+    textSpan.textContent = video.title;
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.textContent = '🗑️';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm('이 영상을 삭제하시겠습니까?')) {
+        videos.splice(index, 1);
+        saveVideos();
+        renderVideos();
+      }
+    };
+    
+    li.appendChild(textSpan);
+    li.appendChild(deleteBtn);
+    
+    // 클릭 이벤트
+    li.addEventListener('click', function(e) {
+      if (e.target !== deleteBtn && e.target !== deleteBtn) {
+        playVideo(video.url);
+        // 선택된 항목 강조
+        document.querySelectorAll('.video-item').forEach(i => i.style.background = '#f5f5f5');
+        this.style.background = '#ffd700';
+      }
+    });
+    
+    videoList.appendChild(li);
+  });
+}
+
+// 비디오 재생
+const video = document.getElementById('videoPlayer');
+function playVideo(videoSrc) {
+  if (Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(videoSrc);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play();
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = videoSrc;
+    video.addEventListener('loadedmetadata', () => {
+      video.play();
+    });
+  }
+}
+
+// 모달 관리
+const addBtn = document.getElementById('addBtn');
+const modal = document.getElementById('addModal');
+const closeModal = document.getElementById('closeModal');
+const cancelBtn = document.getElementById('cancelBtn');
+const saveBtn = document.getElementById('saveBtn');
+const jsonInput = document.getElementById('jsonInput');
+
+addBtn.onclick = () => {
+  modal.style.display = 'block';
+  jsonInput.value = '';
+  jsonInput.focus();
+};
+
+closeModal.onclick = () => {
+  modal.style.display = 'none';
+};
+
+cancelBtn.onclick = () => {
+  modal.style.display = 'none';
+};
+
+saveBtn.onclick = () => {
+  const jsonText = jsonInput.value.trim();
+  if (!jsonText) {
+    alert('JSON을 입력해주세요.');
+    return;
+  }
+  
+  try {
+    const newVideos = JSON.parse(jsonText);
+    if (!Array.isArray(newVideos)) {
+      throw new Error('배열 형식이 아닙니다.');
     }
     
-    // 선택된 항목 강조
-    items.forEach(i => i.style.background = '#f5f5f5');
-    this.style.background = '#ffd700';
-  });
-});
+    let addedCount = 0;
+    let skippedCount = 0;
+    
+    newVideos.forEach(newVideo => {
+      if (!newVideo.title || !newVideo.url) {
+        skippedCount++;
+        return;
+      }
+      
+      // 중복 체크 (URL 기준)
+      const isDuplicate = videos.some(v => v.url === newVideo.url);
+      if (!isDuplicate) {
+        videos.push({ title: newVideo.title, url: newVideo.url });
+        addedCount++;
+      } else {
+        skippedCount++;
+      }
+    });
+    
+    if (addedCount > 0) {
+      saveVideos();
+      renderVideos();
+      alert(`✅ ${addedCount}개 항목이 추가되었습니다.${skippedCount > 0 ? `\n${skippedCount}개 항목은 중복되어 제외되었습니다.` : ''}`);
+      modal.style.display = 'none';
+    } else {
+      alert('추가할 수 있는 항목이 없습니다. (모두 중복되었거나 형식이 올바르지 않습니다.)');
+    }
+  } catch (e) {
+    alert('JSON 형식이 올바르지 않습니다.\n오류: ' + e.message);
+  }
+};
+
+// 모달 외부 클릭 시 닫기
+window.onclick = (event) => {
+  if (event.target === modal) {
+    modal.style.display = 'none';
+  }
+};
+
+// 초기화
+loadVideos();
 </script>
 
 </body>
