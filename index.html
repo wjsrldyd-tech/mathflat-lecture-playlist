@@ -18,6 +18,129 @@ body {
   gap: 0;
   height: 100vh;
 }
+/* 세로 탭바 스타일 */
+.vertical-tabs {
+  width: 80px;
+  flex-shrink: 0;
+  background: #f9f9f9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+  gap: 10px;
+  box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+  z-index: 100;
+}
+.tab-btn {
+  width: 60px;
+  height: 60px;
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+}
+.tab-btn:hover {
+  background: #e0e0e0;
+  transform: scale(1.05);
+}
+.tab-btn.active {
+  background: #4CAF50;
+  color: white;
+}
+.tab-btn.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 40px;
+  background: #4CAF50;
+  border-radius: 0 4px 4px 0;
+}
+.tab-label {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  word-break: keep-all;
+  text-align: center;
+}
+.tab-spacer {
+  flex: 1;
+}
+.tab-divider {
+  width: 40px;
+  height: 1px;
+  background: #ddd;
+  margin: 10px 0;
+}
+/* 설정 사이드바 스타일 */
+.settings-sidebar {
+  width: 400px;
+  flex-shrink: 0;
+  background: white;
+  border-right: 1px solid #ddd;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.settings-sidebar.active {
+  display: flex;
+}
+.settings-header {
+  padding: 15px;
+  border-bottom: 1px solid #ddd;
+  background: #4CAF50;
+  color: white;
+}
+.settings-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+}
+.settings-tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+  border-bottom: 2px solid #ddd;
+}
+.settings-tab {
+  padding: 10px 15px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.settings-tab:hover {
+  color: #4CAF50;
+}
+.settings-tab.active {
+  color: #4CAF50;
+  border-bottom-color: #4CAF50;
+}
+.settings-tab-content {
+  display: none;
+}
+.settings-tab-content.active {
+  display: block;
+}
 .left-panel {
   width: 400px;
   flex-shrink: 0;
@@ -285,7 +408,55 @@ video {
 <body>
 
 <div class="container">
-  <div class="left-panel">
+  <!-- 세로 탭바 -->
+  <div class="vertical-tabs">
+    <button class="tab-btn active" data-screen="lectures">
+      <span>📚</span>
+      <span class="tab-label">강의</span>
+    </button>
+    <div class="tab-spacer"></div>
+    <div class="tab-divider"></div>
+    <button class="tab-btn" data-screen="settings">
+      <span>⚙️</span>
+      <span class="tab-label">설정</span>
+    </button>
+  </div>
+  
+  <!-- 설정 사이드바 -->
+  <div class="settings-sidebar" id="settingsSidebar">
+    <div class="settings-header">
+      <h2>⚙️ 설정</h2>
+    </div>
+    <div class="settings-content">
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="lecture-management">강의 관리</button>
+        <button class="settings-tab" data-tab="curriculum-edit">커리큘럼 편집</button>
+      </div>
+      
+      <!-- 강의 관리 탭 -->
+      <div class="settings-tab-content active" id="lecture-management-tab">
+        <h3 style="margin-top: 0; margin-bottom: 15px;">강의 일괄 추가</h3>
+        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">북마크릿으로 복사한 JSON을 붙여넣으세요:</p>
+        <textarea id="settingsJsonInput" class="json-input" placeholder='[{"title":"문제 123","url":"https://..."}]' style="min-height: 150px;"></textarea>
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+          <button class="btn btn-primary" id="settingsAddBtn" style="flex: 1;">추가</button>
+        </div>
+      </div>
+      
+      <!-- 커리큘럼 편집 탭 -->
+      <div class="settings-tab-content" id="curriculum-edit-tab">
+        <h3 style="margin-top: 0; margin-bottom: 15px;">커리큘럼 편집</h3>
+        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">현재 학년-학기의 커리큘럼 JSON을 편집하세요:</p>
+        <textarea id="curriculumJsonInput" class="json-input" placeholder='{"수와 식": {...}}' style="min-height: 300px; font-family: monospace; font-size: 12px;"></textarea>
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+          <button class="btn btn-primary" id="curriculumSaveBtn" style="flex: 1;">저장</button>
+          <button class="btn btn-secondary" id="curriculumResetBtn">초기화</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="left-panel" id="lecturesPanel">
     <div class="header">
       <div class="header-top">
         <h2>📚 MathFlat 강의 관리</h2>
@@ -735,6 +906,104 @@ window.onclick = (event) => {
     modal.style.display = 'none';
   }
 };
+
+// 화면 전환
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const screen = btn.dataset.screen;
+    
+    // 탭 버튼 활성화
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    if (screen === 'lectures') {
+      document.getElementById('lecturesPanel').style.display = 'flex';
+      document.getElementById('settingsSidebar').classList.remove('active');
+    } else if (screen === 'settings') {
+      document.getElementById('lecturesPanel').style.display = 'none';
+      document.getElementById('settingsSidebar').classList.add('active');
+      // 커리큘럼 JSON 로드
+      if (curriculumData) {
+        document.getElementById('curriculumJsonInput').value = JSON.stringify(curriculumData, null, 2);
+      }
+    }
+  });
+});
+
+// 설정 탭 전환
+document.querySelectorAll('.settings-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const tabId = tab.dataset.tab;
+    
+    // 탭 활성화
+    document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    
+    // 탭 컨텐츠 표시
+    document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(`${tabId}-tab`).classList.add('active');
+  });
+});
+
+// 설정에서 강의 추가
+document.getElementById('settingsAddBtn').addEventListener('click', () => {
+  const jsonText = document.getElementById('settingsJsonInput').value.trim();
+  if (!jsonText) {
+    alert('JSON을 입력해주세요.');
+    return;
+  }
+  
+  try {
+    const newVideos = JSON.parse(jsonText);
+    if (!Array.isArray(newVideos)) {
+      throw new Error('배열 형식이 아닙니다.');
+    }
+    
+    const videosWithUrl = newVideos.filter(v => v.url);
+    
+    if (videosWithUrl.length === 0) {
+      alert('유효한 URL이 없습니다.');
+      return;
+    }
+    
+    autoMatchLectures(videosWithUrl);
+    saveData();
+    renderTree();
+    alert(`✅ ${videosWithUrl.length}개 강의가 추가되었습니다.`);
+    document.getElementById('settingsJsonInput').value = '';
+  } catch (e) {
+    alert('JSON 형식이 올바르지 않습니다.\n오류: ' + e.message);
+  }
+});
+
+// 커리큘럼 저장
+document.getElementById('curriculumSaveBtn').addEventListener('click', () => {
+  const jsonText = document.getElementById('curriculumJsonInput').value.trim();
+  if (!jsonText) {
+    alert('JSON을 입력해주세요.');
+    return;
+  }
+  
+  try {
+    const newCurriculum = JSON.parse(jsonText);
+    curriculumData = newCurriculum;
+    saveData();
+    renderTree();
+    alert('✅ 커리큘럼이 저장되었습니다.');
+  } catch (e) {
+    alert('JSON 형식이 올바르지 않습니다.\n오류: ' + e.message);
+  }
+});
+
+// 커리큘럼 초기화
+document.getElementById('curriculumResetBtn').addEventListener('click', () => {
+  if (confirm('원본 파일에서 커리큘럼을 다시 불러오시겠습니까?')) {
+    localStorage.removeItem(`mathflat_${currentGrade}`);
+    loadGradeData(currentGrade);
+    document.getElementById('curriculumJsonInput').value = JSON.stringify(curriculumData, null, 2);
+    alert('✅ 커리큘럼이 초기화되었습니다.');
+  }
+});
 
 // 초기화
 loadGradeData(currentGrade);
