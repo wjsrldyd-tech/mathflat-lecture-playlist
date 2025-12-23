@@ -1052,25 +1052,28 @@ function autoMatchLectures(newVideos) {
     }
   }
   
-  // 각 유형의 강의 개수 계산
-  const typeCounts = allTypes.map((path, index) => {
+  if (allTypes.length === 0) return;
+  
+  // 각 유형의 현재 강의 개수 확인
+  const typeInfo = allTypes.map((path, index) => {
     const lectures = getLecturesByPath(path);
     return {
       path,
-      index, // 원래 순서 보존
-      count: lectures ? lectures.length : 0
+      index,
+      currentCount: lectures ? lectures.length : 0
     };
   });
   
-  // 강의를 순서대로 할당
-  newVideos.forEach(video => {
-    // 가장 적은 개수를 가진 유형 찾기 (개수가 같으면 원래 순서대로)
-    typeCounts.sort((a, b) => {
-      if (a.count !== b.count) return a.count - b.count;
-      return a.index - b.index; // 원래 순서 유지
-    });
+  // 강의를 순서대로 할당 (한 유형에 최대 3개씩, 남은 것은 그대로 할당)
+  let videoIndex = 0;
+  
+  for (let typeIndex = 0; typeIndex < typeInfo.length; typeIndex++) {
+    // 더 이상 할당할 강의가 없으면 종료
+    if (videoIndex >= newVideos.length) {
+      break;
+    }
     
-    const targetType = typeCounts[0];
+    const targetType = typeInfo[typeIndex];
     const [major, middle, minor, type] = targetType.path;
     
     // 강의 데이터 구조 초기화
@@ -1079,18 +1082,26 @@ function autoMatchLectures(newVideos) {
     if (!lecturesData[major][middle][minor]) lecturesData[major][middle][minor] = {};
     if (!lecturesData[major][middle][minor][type]) lecturesData[major][middle][minor][type] = [];
     
-    // 강의 추가 (유형명 + 번호)
-    const lectureCount = lecturesData[major][middle][minor][type].length;
-    const lectureTitle = `${type} ${lectureCount + 1}`;
+    // 현재 유형의 기존 강의 개수 (유형별 문제 번호를 위해)
+    const existingCount = lecturesData[major][middle][minor][type].length;
     
-    lecturesData[major][middle][minor][type].push({
-      title: lectureTitle,
-      url: video.url
-    });
+    // 할당할 개수 계산 (최대 3개, 남은 것이 있으면 그만큼)
+    const assignCount = Math.min(3, newVideos.length - videoIndex);
     
-    // 카운트 증가
-    targetType.count++;
-  });
+    // 할당
+    for (let i = 0; i < assignCount; i++) {
+      const video = newVideos[videoIndex];
+      // 유형별로 문제 번호 리셋 (기존 개수 + 1부터 시작)
+      const lectureTitle = `문제${existingCount + i + 1}`;
+      
+      lecturesData[major][middle][minor][type].push({
+        title: lectureTitle,
+        url: video.url
+      });
+      
+      videoIndex++;
+    }
+  }
 }
 
 // 데이터 저장
