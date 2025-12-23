@@ -135,8 +135,9 @@ h2 {
   border-radius: 4px;
   font-size: 13px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  gap: 8px;
 }
 .type-item:hover {
   background: #f0f0f0;
@@ -151,6 +152,7 @@ h2 {
   background: #e0e0e0;
   padding: 2px 6px;
   border-radius: 10px;
+  margin-left: auto;
 }
 .lecture-list {
   padding: 10px;
@@ -395,16 +397,11 @@ function createTreeItem(name, level, onClick) {
   
   const icon = document.createElement('span');
   icon.className = 'tree-icon';
-  if (level === 'major') icon.textContent = '📚';
-  else if (level === 'middle') icon.textContent = '📖';
-  else if (level === 'minor') icon.textContent = '📄';
-  else if (level === 'type') icon.textContent = '📝';
   
   const text = document.createElement('span');
   text.textContent = name;
   
   header.appendChild(toggle);
-  header.appendChild(icon);
   header.appendChild(text);
   
   if (level === 'type') {
