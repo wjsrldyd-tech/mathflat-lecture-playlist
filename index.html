@@ -462,13 +462,8 @@ video {
         <h2>📚 MathFlat 강의 관리</h2>
         <button class="add-btn" id="addBtn">➕ 강의 추가</button>
       </div>
-      <div class="grade-selector">
-        <button class="grade-btn active" data-grade="중2-1">중2-1</button>
-        <button class="grade-btn" data-grade="중2-2">중2-2</button>
-        <button class="grade-btn" data-grade="중1-1">중1-1</button>
-        <button class="grade-btn" data-grade="중1-2">중1-2</button>
-        <button class="grade-btn" data-grade="초4-1">초4-1</button>
-        <button class="grade-btn" data-grade="초4-2">초4-2</button>
+      <div class="grade-selector" id="gradeSelector">
+        <!-- 학년-학기 버튼이 동적으로 생성됨 -->
       </div>
     </div>
     <div class="tree-container" id="treeContainer">
@@ -506,9 +501,72 @@ video {
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
 // 현재 선택된 학년-학기
-let currentGrade = '중2-1';
+let currentGrade = null;
 let curriculumData = null;
 let lecturesData = {};
+let availableGrades = []; // 사용 가능한 학년-학기 목록
+
+// 사용 가능한 학년-학기 목록 가져오기
+function getAvailableGrades() {
+  const grades = new Set();
+  
+  // localStorage에서 모든 mathflat_* 키 찾기
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('mathflat_')) {
+      const grade = key.replace('mathflat_', '');
+      grades.add(grade);
+    }
+  }
+  
+  // data 폴더의 JSON 파일 목록도 확인 (비동기로 처리)
+  // 실제로는 서버에서 파일 목록을 제공해야 하지만, 여기서는 localStorage 기반으로만 처리
+  
+  return Array.from(grades).sort();
+}
+
+// 학년-학기 버튼 렌더링
+function renderGradeButtons() {
+  const selector = document.getElementById('gradeSelector');
+  selector.innerHTML = '';
+  
+  availableGrades = getAvailableGrades();
+  
+  if (availableGrades.length === 0) {
+    // 기본값으로 중2-1 추가 (새로 시작하는 경우)
+    availableGrades = ['중2-1'];
+  }
+  
+  availableGrades.forEach(grade => {
+    const btn = document.createElement('button');
+    btn.className = 'grade-btn';
+    btn.dataset.grade = grade;
+    btn.textContent = grade;
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentGrade = grade;
+      loadGradeData(grade);
+    });
+    selector.appendChild(btn);
+  });
+  
+  // 첫 번째 버튼을 활성화하고 로드
+  if (availableGrades.length > 0 && !currentGrade) {
+    currentGrade = availableGrades[0];
+    const firstBtn = selector.querySelector('.grade-btn');
+    if (firstBtn) {
+      firstBtn.classList.add('active');
+      loadGradeData(currentGrade);
+    }
+  } else if (currentGrade) {
+    // 현재 선택된 학년-학기가 있으면 활성화
+    const activeBtn = selector.querySelector(`[data-grade="${currentGrade}"]`);
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+    }
+  }
+}
 
 // 학년-학기별 데이터 로드
 async function loadGradeData(grade) {
@@ -534,6 +592,14 @@ async function loadGradeData(grade) {
     
     // localStorage에 저장
     localStorage.setItem(`mathflat_${grade}`, JSON.stringify(data));
+    
+    // 학년-학기 목록 업데이트 (새로 추가된 경우)
+    if (!availableGrades.includes(grade)) {
+      availableGrades.push(grade);
+      availableGrades.sort();
+      renderGradeButtons();
+    }
+    
     renderTree();
   } catch (error) {
     console.error('데이터 로드 실패:', error);
@@ -816,6 +882,13 @@ function saveData() {
     curriculum: curriculumData,
     lectures: lecturesData
   }));
+  
+  // 학년-학기 목록 업데이트
+  if (currentGrade && !availableGrades.includes(currentGrade)) {
+    availableGrades.push(currentGrade);
+    availableGrades.sort();
+    renderGradeButtons();
+  }
 }
 
 // 비디오 재생
@@ -836,15 +909,7 @@ function playVideo(videoSrc) {
   }
 }
 
-// 학년 선택
-document.querySelectorAll('.grade-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentGrade = btn.dataset.grade;
-    loadGradeData(currentGrade);
-  });
-});
+// 학년 선택은 renderGradeButtons에서 이벤트 리스너로 처리됨
 
 // 모달 관리
 const addBtn = document.getElementById('addBtn');
@@ -1006,7 +1071,7 @@ document.getElementById('curriculumResetBtn').addEventListener('click', () => {
 });
 
 // 초기화
-loadGradeData(currentGrade);
+renderGradeButtons();
 </script>
 
 </body>
