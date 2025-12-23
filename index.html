@@ -361,34 +361,45 @@ h2 {
   display: block;
 }
 .lecture-item {
-  padding: 8px;
-  margin: 5px 0;
-  background: #f5f5f5;
-  border-radius: 5px;
+  padding: 6px 8px 6px 50px;
+  margin: 2px 0;
+  background: transparent;
+  border-radius: 4px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  font-size: 12px;
+  color: #555;
 }
 .lecture-item:hover {
-  background: #e0e0e0;
+  background: #f0f0f0;
 }
 .lecture-item.playing {
-  background: #ffd700;
+  background: #fff3cd;
   font-weight: 500;
+  color: #1976d2;
+}
+.lecture-item-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .delete-lecture-btn {
   background: #f44336;
   color: white;
   border: none;
   border-radius: 3px;
-  padding: 3px 8px;
+  padding: 2px 6px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 10px;
+  margin-left: 8px;
+  opacity: 0.7;
 }
 .delete-lecture-btn:hover {
   background: #da190b;
+  opacity: 1;
 }
 #player { 
   flex: 1;
@@ -569,10 +580,6 @@ video {
     <div class="tree-container" id="treeContainer">
       <!-- 트리뷰가 여기에 동적으로 생성됨 -->
     </div>
-    <div class="lecture-list" id="lectureList">
-      <div style="padding: 10px; font-weight: 500; border-bottom: 1px solid #ddd; margin-bottom: 10px;" id="lectureListTitle"></div>
-      <div id="lectureListContent"></div>
-    </div>
   </div>
   
   <div class="right-panel" id="rightPanel">
@@ -729,35 +736,65 @@ function createTreeItem(name, level, onClick) {
   const header = document.createElement('div');
   header.className = 'tree-item-header';
   
-  const toggle = document.createElement('span');
-  toggle.className = 'tree-toggle collapsed';
-  
-  const icon = document.createElement('span');
-  icon.className = 'tree-icon';
-  
   const text = document.createElement('span');
   text.textContent = name;
   
-  header.appendChild(toggle);
-  header.appendChild(text);
-  
   if (level === 'type') {
+    // 유형 아이템: 토글 아이콘만 추가
+    const typeToggle = document.createElement('span');
+    typeToggle.className = 'tree-toggle collapsed';
+    
     const count = getLectureCount(name);
     if (count > 0) {
       const countBadge = document.createElement('span');
       countBadge.className = 'lecture-count';
       countBadge.textContent = count;
+      header.appendChild(typeToggle);
+      header.appendChild(text);
       header.appendChild(countBadge);
+    } else {
+      header.appendChild(typeToggle);
+      header.appendChild(text);
     }
     
     header.classList.add('type-item');
+    
     header.addEventListener('click', (e) => {
       e.stopPropagation();
-      showLectures(name);
+      let children = item.querySelector('.tree-children');
+      const isExpanded = children && children.classList.contains('expanded');
+      
+      if (isExpanded) {
+        // 접기
+        children.classList.remove('expanded');
+        typeToggle.classList.remove('expanded');
+        typeToggle.classList.add('collapsed');
+      } else {
+        // 펼치기: 영상 목록 표시
+        if (!children) {
+          children = document.createElement('div');
+          children.className = 'tree-children';
+          item.appendChild(children);
+        }
+        showLecturesInTree(item, name);
+        children.classList.add('expanded');
+        typeToggle.classList.remove('collapsed');
+        typeToggle.classList.add('expanded');
+      }
       document.querySelectorAll('.type-item').forEach(i => i.classList.remove('active'));
       header.classList.add('active');
     });
   } else {
+    // 일반 아이템: 토글 아이콘 추가
+    const toggle = document.createElement('span');
+    toggle.className = 'tree-toggle collapsed';
+    
+    const icon = document.createElement('span');
+    icon.className = 'tree-icon';
+    
+    header.appendChild(toggle);
+    header.appendChild(text);
+    
     header.addEventListener('click', () => {
       const children = item.querySelector('.tree-children');
       if (children) {
@@ -854,7 +891,67 @@ function getLecturesByPath(path) {
   return lecturesData[major][middle][minor][type];
 }
 
-// 강의 목록 표시
+// 트리 내에서 강의 목록 표시
+function showLecturesInTree(parentItem, typeName) {
+  const path = findTypePath(typeName);
+  if (!path) return;
+  
+  let childrenContainer = parentItem.querySelector('.tree-children');
+  if (!childrenContainer) {
+    childrenContainer = document.createElement('div');
+    childrenContainer.className = 'tree-children';
+    parentItem.appendChild(childrenContainer);
+  }
+  
+  // 기존 영상 목록 제거
+  childrenContainer.innerHTML = '';
+  
+  const lectures = getLecturesByPath(path) || [];
+  
+  if (lectures.length === 0) {
+    const emptyMsg = document.createElement('div');
+    emptyMsg.style.cssText = 'padding: 8px 8px 8px 50px; color: #999; font-size: 12px; font-style: italic;';
+    emptyMsg.textContent = '강의가 없습니다.';
+    childrenContainer.appendChild(emptyMsg);
+  } else {
+    lectures.forEach((lecture, index) => {
+      const item = document.createElement('div');
+      item.className = 'lecture-item';
+      item.dataset.index = index;
+      item.dataset.typeName = typeName;
+      
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'lecture-item-title';
+      titleSpan.textContent = lecture.title;
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-lecture-btn';
+      deleteBtn.textContent = '삭제';
+      deleteBtn.dataset.index = index;
+      
+      item.appendChild(titleSpan);
+      item.appendChild(deleteBtn);
+      
+      titleSpan.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playVideo(lecture.url);
+        document.querySelectorAll('.lecture-item').forEach(i => i.classList.remove('playing'));
+        item.classList.add('playing');
+      });
+      
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('이 강의를 삭제하시겠습니까?')) {
+          deleteLecture(path, index, typeName);
+        }
+      });
+      
+      childrenContainer.appendChild(item);
+    });
+  }
+}
+
+// 강의 목록 표시 (하단 리스트용 - 호환성 유지)
 function showLectures(typeName) {
   const path = findTypePath(typeName);
   if (!path) return;
@@ -914,7 +1011,27 @@ function deleteLecture(path, index, typeName) {
   // });
   
   saveData();
-  showLectures(typeName);
+  
+  // 트리 내 영상 목록 업데이트
+  const typeItem = Array.from(document.querySelectorAll('.type-item')).find(item => {
+    return item.textContent.includes(typeName) && !item.textContent.includes('(');
+  });
+  if (typeItem) {
+    const treeItem = typeItem.closest('.tree-item');
+    if (treeItem) {
+      const children = treeItem.querySelector('.tree-children');
+      if (children && children.classList.contains('expanded')) {
+        showLecturesInTree(treeItem, typeName);
+      }
+    }
+  }
+  
+  // 하단 리스트도 업데이트 (표시 중인 경우)
+  const listContainer = document.getElementById('lectureList');
+  if (listContainer && listContainer.classList.contains('visible')) {
+    showLectures(typeName);
+  }
+  
   renderTree(); // 카운트 업데이트
 }
 
