@@ -1295,8 +1295,19 @@ document.getElementById('curriculumSaveBtn').addEventListener('click', () => {
   
   try {
     // JavaScript 변수 선언 형식 제거 (const CURRICULUM = {...} 형식 처리)
-    jsonText = jsonText.replace(/^(const|let|var)\s+\w+\s*=\s*/i, '');
-    jsonText = jsonText.replace(/;?\s*$/, '');
+    // 여러 줄에 걸친 경우도 처리
+    jsonText = jsonText.trim();
+    
+    // const/let/var 변수 선언 패턴 제거 (여러 줄 지원)
+    const varPattern = /^(const|let|var)\s+\w+\s*=\s*/im;
+    if (varPattern.test(jsonText)) {
+      // 변수 선언 부분 제거
+      jsonText = jsonText.replace(varPattern, '');
+      // 마지막 세미콜론 제거 (여러 줄에 걸쳐 있을 수 있음)
+      jsonText = jsonText.replace(/;(\s*)$/, '$1');
+    }
+    
+    jsonText = jsonText.trim();
     
     const parsed = JSON.parse(jsonText);
     
